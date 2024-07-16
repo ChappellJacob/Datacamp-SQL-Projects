@@ -1,0 +1,29 @@
+SELECT
+	b.*,
+	CASE
+		WHEN 
+			b.height NOT BETWEEN b.lcl AND b.ucl
+		THEN TRUE
+		ELSE FALSE
+	END as alert
+FROM (
+	SELECT
+		a.*
+	FROM (
+		SELECT 
+			operator,
+			ROW_NUMBER() OVER w , 
+			height, 
+			AVG(height) OVER w AS avg_height, 
+			STDDEV(height) OVER w AS stddev_height,
+			AVG(height) OVER w + 3*STDDEV(height) OVER w/SQRT(5) AS ucl, 
+			AVG(height) OVER w - 3*STDDEV(height) OVER w/SQRT(5) AS lcl
+		FROM manufacturing_parts 
+		WINDOW w AS (
+			PARTITION BY operator 
+			ORDER BY item_no 
+			ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+		)
+	) AS a
+	WHERE a.row_number >= 5
+) AS b
